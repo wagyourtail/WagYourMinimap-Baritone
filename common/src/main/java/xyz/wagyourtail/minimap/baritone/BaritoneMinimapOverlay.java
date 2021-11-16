@@ -52,6 +52,7 @@ public class BaritoneMinimapOverlay extends AbstractMinimapOverlay {
                 float endScale = parent.getScaleForVecToBorder(endVec, chunkRadius, maxLength);
 
                 if (startScale < 1 && endScale < 1) {
+                    stack.popPose();
                     continue;
                 }
                 if (startScale < 1) {
