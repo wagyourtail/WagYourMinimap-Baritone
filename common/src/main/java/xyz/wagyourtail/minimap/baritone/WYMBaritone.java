@@ -16,6 +16,7 @@ import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.Registries;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.TranslatableComponent;
@@ -81,6 +82,12 @@ public class WYMBaritone {
                     BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(p.posX, p.posY, p.posZ));
                 }));
             }
+        });
+        MinimapClientEvents.WAYPOINT_LIST_MENU.register((s, b, nnb) -> {
+            nnb.add(new Button(0, 0, 0, 20, new TranslatableComponent("gui.wagyourminimap.baritone.path_to"), (btn) -> {
+                Waypoint p = s.getSelected().point;
+                BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(p.posX, p.posY, p.posZ));
+            }));
         });
     }
 

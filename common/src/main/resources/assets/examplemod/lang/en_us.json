@@ -1,3 +1,5 @@
 {
-  "gui.wagyourminimap.baritone": "Baritone"
+  "gui.wagyourminimap.baritone": "Baritone",
+  "gui.wagyourminimap.baritone.path_to": "Path To",
+  "gui.wagyourminimap.settings.baritone.enablewaypoint": "Show Baritone Goal Waypoint"
 }
