@@ -5,7 +5,7 @@ dependencies {
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury:${rootProject.architectury_version}"
     modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap:${rootProject.minimap_version}"
-    modApi "baritone:baritone-unoptimized:1.7.1"
+    modApi "baritone:baritone-unoptimized-fabric:1.7.1"
 }
 
 architectury {

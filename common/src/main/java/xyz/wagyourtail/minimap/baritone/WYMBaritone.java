@@ -1,14 +1,20 @@
 package xyz.wagyourtail.minimap.baritone;
 
 import baritone.api.BaritoneAPI;
+import baritone.api.cache.IWaypoint;
+import baritone.api.cache.IWaypointCollection;
 import baritone.api.event.events.PathEvent;
+import baritone.api.event.events.WorldEvent;
+import baritone.api.event.events.type.EventState;
 import baritone.api.event.listener.AbstractGameEventListener;
 import baritone.api.pathing.calc.IPath;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalGetToBlock;
 import baritone.api.pathing.goals.GoalXZ;
+import baritone.api.utils.BetterBlockPos;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonObject;
 import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.registry.CreativeTabRegistry;
@@ -26,6 +32,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import xyz.wagyourtail.minimap.api.MinimapApi;
+import xyz.wagyourtail.minimap.api.MinimapEvents;
 import xyz.wagyourtail.minimap.api.client.MinimapClientApi;
 import xyz.wagyourtail.minimap.api.client.MinimapClientEvents;
 import xyz.wagyourtail.minimap.api.client.config.MinimapClientConfig;
@@ -36,9 +43,11 @@ import xyz.wagyourtail.minimap.client.gui.screen.widget.InteractMenuButton;
 import xyz.wagyourtail.minimap.map.MapServer;
 import xyz.wagyourtail.minimap.waypoint.Waypoint;
 import xyz.wagyourtail.minimap.waypoint.WaypointManager;
+import xyz.wagyourtail.minimap.waypoint.filters.DimensionFilter;
 
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class WYMBaritone {
     public static final String MOD_ID = "wagyourminimap-baritone";
@@ -89,6 +98,34 @@ public class WYMBaritone {
                 BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(p.posX, p.posY, p.posZ));
             }));
         });
+
+        MinimapEvents.WAYPOINT_ADDED.register((w) -> {
+            IWaypointCollection btWaypointManager = BaritoneAPI.getProvider()
+                .getPrimaryBaritone()
+                .getWorldProvider()
+                .getCurrentWorld()
+                .getWaypoints();
+            Set<IWaypoint> btWaypoints = btWaypointManager.getByTag(IWaypoint.Tag.USER);
+
+            BetterBlockPos pos = new BetterBlockPos(w.posX, w.posY, w.posZ);
+
+            btWaypointManager.addWaypoint(new baritone.api.cache.Waypoint(
+                w.name + "_WYM",
+                IWaypoint.Tag.USER,
+                pos
+            ));
+        });
+
+        MinimapEvents.WAYPOINT_REMOVED.register((w) -> {
+            IWaypointCollection btWaypointManager = BaritoneAPI.getProvider()
+                .getPrimaryBaritone()
+                .getWorldProvider()
+                .getCurrentWorld()
+                .getWaypoints();
+            Set<IWaypoint> btWaypoints = btWaypointManager.getByTag(IWaypoint.Tag.USER);
+
+            btWaypoints.stream().filter(p -> p.getName().equals(w.name + "_WYM")).collect(Collectors.toSet()).forEach(btWaypointManager::removeWaypoint);
+        });
     }
 
     private static class WYMBaritoneEventListener implements AbstractGameEventListener {
@@ -104,6 +141,7 @@ public class WYMBaritone {
             new String[] {"baritone"},
             new String[] {"minecraft/overworld"},
             new JsonObject(),
+            "default",
             true,
             true
         );
@@ -161,34 +199,89 @@ public class WYMBaritone {
                     new String[] {"baritone"},
                     new String[] {MinimapApi.getInstance().getMapServer().getCurrentLevel().level_slug()},
                     new JsonObject(),
+                    "default",
                     true,
                     true
                 );
         }
 
         public Waypoint createBaritoneWaypoint(int x, int z) {
-            Level level = mc.level;
-            if (level == null) {
-                return null;
-            }
             MapServer.MapLevel ml = MinimapApi.getInstance().getMapServer().getCurrentLevel();
-            return new Waypoint(
-                level.dimensionType().coordinateScale(),
-                x,
-                ChunkLocation.locationForChunkPos(ml, x << 4, z << 4).get().getData(SurfaceDataPart.class).map(e -> e.heightmap[SurfaceDataPart.blockPosToIndex(x, z)] + 2).orElse(64),
-                z,
-                (byte) 0x00,
-                (byte) 0xFF,
-                (byte) 0x00,
-                "Baritone Goal",
-                new String[] {"baritone"},
-                new String[] {ml.level_slug()},
-                new JsonObject(),
-                true,
-                true
-            );
+            return createBaritoneWaypoint(x, ChunkLocation.locationForChunkPos(ml, x << 4, z << 4).get().getData(SurfaceDataPart.class).map(e -> e.heightmap[SurfaceDataPart.blockPosToIndex(x, z)] + 2).orElse(64), z);
+        }
+
+        @Override
+        public void onWorldEvent(WorldEvent event) {
+            if (event.getState() == EventState.POST) {
+                WaypointManager wymWaypointManager = MinimapClientApi.getInstance().getMapServer().waypoints;
+                Set<Waypoint> wymWaypoints = wymWaypointManager.getAllWaypoints()
+                    .stream()
+                    .filter(new DimensionFilter())
+                    .collect(
+                        Collectors.toSet()
+                    );
+                IWaypointCollection btWaypointManager = BaritoneAPI.getProvider()
+                    .getPrimaryBaritone()
+                    .getWorldProvider()
+                    .getCurrentWorld()
+                    .getWaypoints();
+                Set<IWaypoint> btWaypoints = btWaypointManager.getByTag(IWaypoint.Tag.USER);
+
+                Map<BetterBlockPos, Waypoint> wymWaypointPos = new HashMap<>();
+
+                for (Waypoint wymWaypoint : ImmutableSet.copyOf(wymWaypoints)) {
+                    if (Arrays.asList(wymWaypoint.groups).contains("baritone")) {
+                        wymWaypointManager.removeWaypoint(wymWaypoint);
+                    } else {
+                        wymWaypointPos.put(new BetterBlockPos(wymWaypoint.posX, wymWaypoint.posY, wymWaypoint.posZ), wymWaypoint);
+                    }
+                }
+
+                for (IWaypoint btWaypoint : ImmutableSet.copyOf(btWaypoints)) {
+                    if (btWaypoint.getName().endsWith("_WYM")) {
+                        if (wymWaypointPos.containsKey(btWaypoint.getLocation())) {
+                            if (!btWaypoint.getName().equals(wymWaypointPos.get(btWaypoint.getLocation()).name + "_WYM")) {
+                                btWaypointManager.removeWaypoint(btWaypoint);
+                                btWaypointManager.addWaypoint(new baritone.api.cache.Waypoint(
+                                    wymWaypointPos.get(btWaypoint.getLocation()).name + "_WYM",
+                                    IWaypoint.Tag.USER,
+                                    btWaypoint.getLocation()
+                                ));
+                                wymWaypointPos.remove(btWaypoint.getLocation());
+                            }
+                        } else {
+                            btWaypointManager.removeWaypoint(btWaypoint);
+                        }
+                    } else {
+                        BetterBlockPos pos = btWaypoint.getLocation();
+                        wymWaypointManager.addWaypoint(new Waypoint(
+                            event.getWorld().dimensionType().coordinateScale(),
+                            pos.x,
+                            pos.y,
+                            pos.z,
+                            (byte) 0x00,
+                            (byte) 0xFF,
+                            (byte) 0x00,
+                            "baritone:" + btWaypoint.getTag().getName() + " " + btWaypoint.getName(),
+                            new String[] {"baritone"},
+                            new String[] {MinimapApi.getInstance().getMapServer().getCurrentLevel().level_slug()},
+                            new JsonObject(),
+                            "default",
+                            true,
+                            true
+                        ));
+                    }
+                }
+
+                for (Map.Entry<BetterBlockPos, Waypoint> wymWaypoint : wymWaypointPos.entrySet()) {
+                    btWaypointManager.addWaypoint(new baritone.api.cache.Waypoint(
+                        wymWaypoint.getValue().name + "_WYM",
+                        IWaypoint.Tag.USER,
+                        wymWaypoint.getKey()
+                    ));
+                }
+            }
         }
 
     }
-
 }

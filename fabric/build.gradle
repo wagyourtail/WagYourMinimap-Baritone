@@ -20,7 +20,7 @@ dependencies {
     modApi "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
-    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-fabric:${rootProject.minimap_version}:fabric"
+    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-fabric:${rootProject.minimap_version}"
     modApi "baritone:baritone-unoptimized-fabric:1.7.1"
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
