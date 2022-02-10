@@ -7,36 +7,23 @@ import baritone.api.event.events.PathEvent;
 import baritone.api.event.events.WorldEvent;
 import baritone.api.event.events.type.EventState;
 import baritone.api.event.listener.AbstractGameEventListener;
-import baritone.api.pathing.calc.IPath;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalGetToBlock;
 import baritone.api.pathing.goals.GoalXZ;
 import baritone.api.utils.BetterBlockPos;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonObject;
 import dev.architectury.event.events.client.ClientLifecycleEvent;
-import dev.architectury.registry.CreativeTabRegistry;
-import dev.architectury.registry.registries.DeferredRegister;
-import dev.architectury.registry.registries.Registries;
-import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.core.Registry;
 import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import xyz.wagyourtail.minimap.api.MinimapApi;
 import xyz.wagyourtail.minimap.api.MinimapEvents;
 import xyz.wagyourtail.minimap.api.client.MinimapClientApi;
 import xyz.wagyourtail.minimap.api.client.MinimapClientEvents;
-import xyz.wagyourtail.minimap.api.client.config.MinimapClientConfig;
-import xyz.wagyourtail.minimap.baritone.config.BaritoneOverlaySettings;
 import xyz.wagyourtail.minimap.chunkdata.ChunkLocation;
 import xyz.wagyourtail.minimap.chunkdata.parts.SurfaceDataPart;
 import xyz.wagyourtail.minimap.client.gui.screen.widget.InteractMenuButton;
@@ -46,7 +33,6 @@ import xyz.wagyourtail.minimap.waypoint.WaypointManager;
 import xyz.wagyourtail.minimap.waypoint.filters.DimensionFilter;
 
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class WYMBaritone {
@@ -63,7 +49,8 @@ public class WYMBaritone {
 
         // register minimap renderer
         MinimapClientEvents.AVAILABLE_MINIMAP_OPTIONS.register((clz, layer, overlay) -> {
-            overlay.put(BaritoneMinimapOverlay.class, BaritoneOverlaySettings.class);
+            System.out.println("adding baritone minimap overlay option");
+            overlay.add(BaritoneMinimapOverlay.class);
         });
 
         // register fullscreen renderer
@@ -82,9 +69,27 @@ public class WYMBaritone {
 
         // register goto managers
         MinimapClientEvents.FULLSCREEN_INTERACT_MENU.register((menu) -> {
-            menu.buttons.put(I18n.get("gui.wagyourminimap.baritone") + ": ", List.of(new InteractMenuButton(new TranslatableComponent("gui.wagyourminimap.baritone.path_to"), (btn) -> {
-                BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalXZ((int)menu.x, (int)menu.z));
-            })));
+            if (menu.startX != menu.endX || menu.startY != menu.endY) {
+                menu.buttons.put(I18n.get("gui.wagyourminimap.baritone") + ": ", List.of(
+                    new InteractMenuButton(new TranslatableComponent("gui.wagyourminimap.baritone.add_select"), (btn) -> {
+                        int minY = MinimapApi.getInstance().getConfig().get(WYMBaritoneConfig.class).minY;
+                        int maxY = MinimapApi.getInstance().getConfig().get(WYMBaritoneConfig.class).maxY;
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getSelectionManager().addSelection(new BetterBlockPos(menu.startXBlock, minY, menu.startZBlock), new BetterBlockPos(menu.endXBlock, maxY, menu.endZBlock));
+                    }),
+                    new InteractMenuButton(new TranslatableComponent("gui.wagyourminimap.baritone.set_select"), (btn) -> {
+                        int minY = MinimapApi.getInstance().getConfig().get(WYMBaritoneConfig.class).minY;
+                        int maxY = MinimapApi.getInstance().getConfig().get(WYMBaritoneConfig.class).maxY;
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getSelectionManager().removeAllSelections();
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getSelectionManager().addSelection(new BetterBlockPos(menu.startXBlock, minY, menu.startZBlock), new BetterBlockPos(menu.endXBlock, maxY, menu.endZBlock));
+                    })
+                ));
+            } else {
+                menu.buttons.put(I18n.get("gui.wagyourminimap.baritone") + ": ", List.of(
+                    new InteractMenuButton(new TranslatableComponent("gui.wagyourminimap.baritone.path_to"), (btn) -> {
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalXZ((int)menu.startXBlock, (int)menu.startZBlock));
+                    })
+                ));
+            }
 
             for (Waypoint p : menu.waypoints) {
                 menu.buttons.get(I18n.get("gui.wagyourminimap.waypoint") + ": " + p.name).add(new InteractMenuButton(new TranslatableComponent("gui.wagyourminimap.baritone.path_to"), (btn) -> {
@@ -197,7 +202,7 @@ public class WYMBaritone {
                     (byte) 0x00,
                     "Baritone Goal",
                     new String[] {"baritone"},
-                    new String[] {MinimapApi.getInstance().getMapServer().getCurrentLevel().level_slug()},
+                    new String[] {MinimapApi.getInstance().getMapServer().getLevelFor(level).level_slug()},
                     new JsonObject(),
                     "default",
                     true,
@@ -206,7 +211,7 @@ public class WYMBaritone {
         }
 
         public Waypoint createBaritoneWaypoint(int x, int z) {
-            MapServer.MapLevel ml = MinimapApi.getInstance().getMapServer().getCurrentLevel();
+            MapServer.MapLevel ml = MinimapApi.getInstance().getMapServer().getLevelFor(mc.level);
             return createBaritoneWaypoint(x, ChunkLocation.locationForChunkPos(ml, x << 4, z << 4).get().getData(SurfaceDataPart.class).map(e -> e.heightmap[SurfaceDataPart.blockPosToIndex(x, z)] + 2).orElse(64), z);
         }
 
@@ -264,7 +269,7 @@ public class WYMBaritone {
                             (byte) 0x00,
                             "baritone:" + btWaypoint.getTag().getName() + " " + btWaypoint.getName(),
                             new String[] {"baritone"},
-                            new String[] {MinimapApi.getInstance().getMapServer().getCurrentLevel().level_slug()},
+                            new String[] {MinimapApi.getInstance().getMapServer().getLevelFor(mc.level).level_slug()},
                             new JsonObject(),
                             "default",
                             true,

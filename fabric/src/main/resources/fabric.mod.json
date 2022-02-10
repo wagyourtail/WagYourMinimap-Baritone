@@ -22,10 +22,10 @@
   "depends": {
     "fabricloader": ">=0.7.4",
     "fabric": "*",
-    "minecraft": ">=1.16.4",
+    "minecraft": ">=1.8.1",
     "architectury": ">=1.1.55",
-    "wagyourminimap": ">=1.0.4",
-    "baritone": "1.7.X"
+    "wagyourminimap": ">=1.0.8",
+    "baritone": "1.8.X"
   },
   "suggests": {
     "flamingo": "*"

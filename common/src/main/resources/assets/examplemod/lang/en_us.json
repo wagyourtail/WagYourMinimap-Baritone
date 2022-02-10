@@ -1,5 +1,9 @@
 {
   "gui.wagyourminimap.baritone": "Baritone",
   "gui.wagyourminimap.baritone.path_to": "Path To",
-  "gui.wagyourminimap.settings.baritone.enablewaypoint": "Show Baritone Goal Waypoint"
+  "gui.wagyourminimap.settings.baritone.enablewaypoint": "Show Baritone Goal Waypoint",
+  "gui.wagyourminimap.baritone.add_select": "Add Selection",
+  "gui.wagyourminimap.baritone.set_select": "Set Selection",
+  "gui.wagyourminimap.settings.baritone.selection_min_y": "Selection Min Y",
+  "gui.wagyourminimap.settings.baritone.selection_max_y": "Selection Max Y"
 }

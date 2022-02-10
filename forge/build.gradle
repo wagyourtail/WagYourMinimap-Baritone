@@ -15,12 +15,27 @@ configurations {
     developmentForge.extendsFrom common
 }
 
+def urlFile = { url, name, version ->
+    File file = new File("$rootDir/libs/${name}-${version}.jar")
+    file.parentFile.mkdirs()
+    if (!file.exists()) {
+        new URL(url).withInputStream { downloadStream ->
+            file.withOutputStream { fileOut ->
+                fileOut << downloadStream
+            }
+        }
+    }
+    return [name: name, version: version]
+}
+
+
 dependencies {
     forge "net.minecraftforge:forge:${rootProject.minecraft_version}-${rootProject.forge_version}"
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury-forge:${rootProject.architectury_version}"
-    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-forge:${rootProject.minimap_version}"
-    modApi "baritone:baritone-unoptimized-forge:1.7.1"
+    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-1.18-forge:${rootProject.minimap_version}"
+    modApi urlFile("https://github.com/cabaletta/baritone/releases/download/v$baritone_version/baritone-unoptimized-forge-${baritone_version}.jar", "baritone-unoptimized-forge", baritone_version)
+
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }

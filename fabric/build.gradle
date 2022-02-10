@@ -15,13 +15,34 @@ configurations {
     developmentFabric.extendsFrom common
 }
 
+def urlFile = { url, name, version ->
+    File file = new File("$rootDir/libs/${name}-${version}.jar")
+    file.parentFile.mkdirs()
+    if (!file.exists()) {
+        new URL(url).withInputStream { downloadStream ->
+            file.withOutputStream { fileOut ->
+                fileOut << downloadStream
+            }
+        }
+    }
+    return [name: name, version: version]
+}
+
+repositories {
+    maven {
+        name = 'Quilt'
+        url = 'https://maven.quiltmc.org/repository/release'
+    }
+}
+
 dependencies {
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     modApi "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
-    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-fabric:${rootProject.minimap_version}"
-    modApi "baritone:baritone-unoptimized-fabric:1.7.1"
+    modApi "com.github.wagyourtail.WagYourMinimap:wagyourminimap-1.18-fabric:${rootProject.minimap_version}"
+    modApi urlFile("https://github.com/cabaletta/baritone/releases/download/v$baritone_version/baritone-unoptimized-fabric-${baritone_version}.jar", "baritone-unoptimized-fabric", baritone_version)
+
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }

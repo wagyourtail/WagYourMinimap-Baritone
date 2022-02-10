@@ -10,11 +10,13 @@ import com.mojang.math.Matrix4f;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import xyz.wagyourtail.config.field.SettingsContainer;
 import xyz.wagyourtail.minimap.api.client.MinimapClientApi;
 import xyz.wagyourtail.minimap.api.client.config.MinimapClientConfig;
 import xyz.wagyourtail.minimap.client.gui.hud.map.AbstractMinimapRenderer;
 import xyz.wagyourtail.minimap.client.gui.hud.overlay.AbstractMinimapOverlay;
 
+@SettingsContainer("gui.wagyourminimap.baritone")
 public class BaritoneMinimapOverlay extends AbstractMinimapOverlay {
 
     public BaritoneMinimapOverlay(AbstractMinimapRenderer parent) {
